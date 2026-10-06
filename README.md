@@ -1,7 +1,7 @@
 # WorkPulse — Employee Management System
 
 ## Overview
-**WorkPulse** is a modern, full-stack enterprise employee management system designed for managing organizational structures, staff directories, and business departments. The platform features a responsive React Single Page Application (SPA) backed by a hardened Spring Boot REST API secured with stateless JSON Web Token (JWT) authentication.
+**WorkPulse** is a full-stack enterprise employee management platform designed to manage staff directories and organizational departments. It pairs a responsive React Single Page Application (SPA) built with Material UI with a Spring Boot 3 REST API secured by stateless JWT authentication and backed by MySQL.
 
 ---
 
@@ -11,60 +11,51 @@
 [ React SPA (Vite + Material UI) ]
                 │
                 ▼ (HTTP / JSON + JWT Bearer)
-[ Spring Boot REST Controllers (Spring Web) ]
+[ Spring Boot REST Controllers ]
                 │
-                ▼ (Security Context & Validation)
+                ▼ (Validation & DTOs)
 [ Service & Business Logic Layer ]
                 │
-                ▼ (Repository Abstraction)
-[ Spring Data JPA / Hibernate ORM ]
+                ▼ (Spring Data JPA)
+[ Hibernate ORM / Flyway Migrations ]
                 │
-                ▼ (JDBC / MySQL Driver)
-[ MySQL Relational Database ]
+                ▼ (JDBC Driver)
+[ MySQL 8.0 Database ]
 ```
+
+---
+
+## Features
+
+- **JWT Authentication**: User registration, login, and stateless token-based authentication with expiration handling.
+- **Organization Dashboard**: KPI summary cards displaying total employees, department distribution, and quick navigation.
+- **Employee Directory**:
+  - Full CRUD operations (Create, Read, Update, Delete).
+  - Server-side pagination and multi-field sorting.
+  - Live debounced search across first name, last name, and email.
+  - Confirmation modals for safe deletion.
+- **Department Management**:
+  - Full CRUD lifecycle with dynamic employee count aggregation.
+  - Strict foreign key business validation (cannot delete departments with assigned employees).
+- **Centralized Error Handling**: Unified error response model (`GlobalExceptionHandler`) hiding internal stack traces and database details.
+- **Responsive Layout**: Material UI design with desktop drawer, mobile navigation, and feedback snackbars.
 
 ---
 
 ## Tech Stack
 
-### Frontend
-- **Framework**: React 18
-- **Build Tool**: Vite
-- **UI Components & Icons**: Material UI (MUI v6/v7) & Emotion
-- **Routing**: React Router DOM (v7)
-- **HTTP Client**: Axios (with centralized JWT interceptor)
-- **State Management**: React Context API (`AuthContext`)
-
-### Backend
-- **Language**: Java 17
-- **Framework**: Spring Boot 3.3.5
-- **Security**: Spring Security & BCrypt password hashing
-- **Authentication**: Stateless JSON Web Tokens (JJWT 0.12.6)
-- **Persistence**: Spring Data JPA & Hibernate 6
-- **Database**: MySQL 8.x
-- **Validation**: Jakarta Bean Validation
-- **Documentation**: Springdoc OpenAPI / Swagger UI
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, Material UI (MUI v6/v7), Emotion, React Router DOM v7, Axios |
+| **Backend** | Java 17, Spring Boot 3.3.5, Spring Security, Spring Data JPA, Hibernate 6, Flyway |
+| **Security** | JSON Web Tokens (JJWT 0.12.6), BCrypt Password Hashing |
+| **Database** | MySQL 8.x |
+| **API Docs** | Springdoc OpenAPI 3 / Swagger UI |
+| **DevOps / Containers** | Multi-stage Dockerfiles, Docker Compose, Nginx Alpine |
 
 ---
 
-## Core Features
-
-- **JWT Authentication**: User registration, login, and protected routes with token expiration checks.
-- **Organization Dashboard**: Real-time KPI metrics displaying live employee counts, department distributions, and quick navigation.
-- **Employee Directory**:
-  - Full CRUD lifecycle (Create, Read, Update, Delete).
-  - Server-side pagination and sorting.
-  - Live debounced search across first name, last name, and email.
-  - Safe delete confirmation dialog with automatic pagination re-indexing.
-- **Department Management**:
-  - Full CRUD lifecycle with dynamic employee count aggregation.
-  - Strict business rule enforcement: departments with active employees cannot be deleted (HTTP 409).
-- **Hardened Error Handling**: Centralized `GlobalExceptionHandler` returning consistent, sanitized error payloads with zero stack trace or SQL leakage.
-- **Responsive Interface**: Mobile-friendly navigation drawer, adaptive grids, and scrollable data tables.
-
----
-
-## Database Model & Relationships
+## Database Model
 
 ```mermaid
 erDiagram
@@ -95,240 +86,155 @@ erDiagram
         datetime(6) created_at
     }
 
-    DEPARTMENTS ||--o{ EMPLOYEES : "1-to-Many"
+    DEPARTMENTS ||--o{ EMPLOYEES : "1-to-Many (department_id)"
 ```
 
-- **Department 1 $\rightarrow$ N Employee**: `Department` has a `@OneToMany(mappedBy = "department")` mapping. `Employee` references `Department` via `@ManyToOne(fetch = FetchType.LAZY)`.
-- **Foreign Key Integrity**: Deleting a department with active assigned employees is rejected at both service and database levels to prevent orphaned records.
+- **Department (1) $\rightarrow$ Employee (N)**: Each employee belongs to exactly one department via a foreign key reference (`department_id`).
+- **Integrity Constraints**: Unique constraints on `users(username, email)`, `departments(name)`, and `employees(email)`.
 
 ---
 
-## Authentication Mechanism
+## Authentication
 
-1. **Registration**: User registers via `/api/auth/register`. Passwords are encrypted with BCrypt before storage.
-2. **Login**: User authenticates via `/api/auth/login`. On successful credential verification, the backend issues an HMAC-SHA256 signed JWT containing the username subject and expiration claim.
-3. **Protected Requests**: The frontend Axios request interceptor injects `Authorization: Bearer <token>` on every API call. The backend `JwtAuthenticationFilter` validates signature and expiration before establishing the `SecurityContext`.
-4. **Session Invalidation**: If an expired or invalid token is presented (HTTP 401), the Axios response interceptor clears client authentication state and redirects to `/login`.
+1. **User Registration**: `POST /api/auth/register` hashes passwords with BCrypt before persisting the user record.
+2. **User Login**: `POST /api/auth/login` validates credentials and issues an HMAC-SHA256 signed JWT token containing the username claim and expiration timestamp.
+3. **Protected Requests**: The React Axios interceptor attaches the token as `Authorization: Bearer <token>`. The backend `JwtAuthenticationFilter` validates the signature, extracts the user details, and sets the Spring `SecurityContext`.
+4. **Session Expiry**: Expired tokens return `401 Unauthorized`, prompting the frontend auth interceptor to clear the session and route to the login screen.
 
 ---
 
-## Local Setup & Installation
+## API
+
+Interactive Swagger / OpenAPI UI is accessible at:
+- **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- **OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+
+### Endpoint Summary
+
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/health` | Public | Application health status probe |
+| `POST` | `/api/auth/register` | Public | Register new user account |
+| `POST` | `/api/auth/login` | Public | Authenticate user & receive JWT |
+| `GET` | `/api/employees` | Authenticated | Paginated & searchable employee list |
+| `POST` | `/api/employees` | Authenticated | Create a new employee record |
+| `GET` | `/api/employees/{id}` | Authenticated | Get employee details by UUID |
+| `PUT` | `/api/employees/{id}` | Authenticated | Update employee details |
+| `DELETE` | `/api/employees/{id}` | Authenticated | Delete employee record |
+| `GET` | `/api/departments` | Authenticated | List all departments with employee counts |
+| `POST` | `/api/departments` | Authenticated | Create a new department |
+| `GET` | `/api/departments/{id}` | Authenticated | Get department details by UUID |
+| `PUT` | `/api/departments/{id}` | Authenticated | Update department name |
+| `DELETE` | `/api/departments/{id}` | Authenticated | Delete department (rejected if staff assigned) |
+
+---
+
+## Screenshots
+
+| Dashboard View | Employee Directory |
+| :---: | :---: |
+| *(Dashboard KPI metrics & department distribution)* | *(Searchable, paginated employee table with actions)* |
+
+| Department Management | Add / Edit Employee Form |
+| :---: | :---: |
+| *(Department cards with active employee counts)* | *(Validated employee form with department dropdown)* |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Java 17+ (`java -version`)
-- Maven 3.8+ (`mvn -version`)
-- Node.js 18+ and npm (`node -v`, `npm -v`)
-- Running MySQL 8.x instance
+- **Java 17+** & **Maven 3.8+**
+- **Node.js 18+** & **npm**
+- **MySQL 8.x** running locally
 
 ### 1. Database Setup
-Create a MySQL database for the application:
 ```sql
 CREATE DATABASE IF NOT EXISTS employee_management;
 ```
 
 ### 2. Configure Environment Variables
-Set the following environment variables or use the development defaults:
+Copy `.env.example` to `.env` and set your credentials:
+```bash
+cp .env.example .env
+```
 
-| Variable | Description | Example / Placeholder |
-| :--- | :--- | :--- |
-| `DB_URL` | MySQL JDBC URL | `jdbc:mysql://localhost:3306/employee_management?createDatabaseIfNotExist=true&useSSL=false` |
-| `DB_USERNAME` | Database username | `your_db_username` |
-| `DB_PASSWORD` | Database password | `your_db_password` |
-| `JWT_SECRET` | Base64 256-bit secret key | `your_base64_encoded_jwt_secret_key` |
-| `JWT_EXPIRATION` | Token TTL in milliseconds | `3600000` (1 hour) |
-
-### 3. Run Backend Service
+### 3. Run Backend (Spring Boot)
 ```bash
 # From repository root
 mvn clean test
 mvn spring-boot:run
 ```
-The backend API starts on `http://localhost:8080`.
+*Backend runs on `http://localhost:8080`.*
 
-### 4. Run Frontend Application
+### 4. Run Frontend (React / Vite)
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Copy environment example
-cp .env.example .env
-
-# Install dependencies (if not already installed)
 npm install
-
-# Start development server
 npm run dev
 ```
-The frontend starts on `http://localhost:5173`.
+*Frontend runs on `http://localhost:5173`.*
 
 ---
 
-## API Documentation & Endpoints
+## Docker
 
-Interactive Swagger / OpenAPI UI is accessible when the backend is running:
-- **Swagger UI**: `http://localhost:8080/swagger-ui/index.html`
-- **OpenAPI JSON**: `http://localhost:8080/v3/api-docs`
+Run the entire application stack (MySQL, Spring Boot backend, and React frontend served via Nginx) using Docker Compose.
 
-### REST Endpoints Summary
+### 1. Start Stack
+```bash
+docker compose up --build -d
+```
 
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/health` | Public | Service health probe |
-| `POST` | `/api/auth/register` | Public | Register a new user |
-| `POST` | `/api/auth/login` | Public | Authenticate user & issue JWT |
-| `GET` | `/api/employees` | Authenticated | Paginated employee list (`?search=`, `?page=`, `?size=`, `?sort=`) |
-| `POST` | `/api/employees` | Authenticated | Create a new employee |
-| `GET` | `/api/employees/{id}` | Authenticated | Get employee details by ID |
-| `PUT` | `/api/employees/{id}` | Authenticated | Update employee by ID |
-| `DELETE` | `/api/employees/{id}` | Authenticated | Delete employee by ID |
-| `GET` | `/api/departments` | Authenticated | List all departments with employee counts |
-| `POST` | `/api/departments` | Authenticated | Create a new department |
-| `GET` | `/api/departments/{id}` | Authenticated | Get department details by ID |
-| `PUT` | `/api/departments/{id}` | Authenticated | Update department name |
-| `DELETE` | `/api/departments/{id}` | Authenticated | Delete department (fails 409 if staff assigned) |
+### 2. Service Access URLs
+
+| Service | URL | Description |
+| :--- | :--- | :--- |
+| **Frontend Application** | [http://localhost:3000](http://localhost:3000) | React SPA via Nginx with SPA routing |
+| **Backend API** | [http://localhost:8080](http://localhost:8080) | Spring Boot REST API |
+| **Swagger UI** | [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) | Interactive OpenAPI documentation |
+| **Health Probe** | [http://localhost:8080/api/health](http://localhost:8080/api/health) | Backend health check endpoint |
+
+### 3. Stop Stack
+```bash
+# Stop containers and preserve MySQL data volume
+docker compose down
+
+# Stop containers and wipe database volume
+docker compose down -v
+```
 
 ---
 
-## Running Tests & Builds
+## Testing
 
-### Backend Test Suite
+### Backend Unit & Integration Tests (48 Tests)
 ```bash
 mvn clean test
 ```
-Executes all 48 unit and integration tests (Spring Boot test slice, JPA mapping, Auth & CRUD integration).
+*Executes all controller integration tests, security filter tests, validation tests, and JPA repository queries.*
 
 ### Frontend Production Build
 ```bash
 cd frontend
 npm run build
 ```
-Generates production-optimized static bundles into `frontend/dist/`.
+*Compiles the React application with Vite into optimized production bundles in `frontend/dist/`.*
 
 ---
 
-## Project Structure
+## Security
 
-```
-d:/WorkPulse/
-├── pom.xml                               # Backend Maven configuration
-├── Dockerfile                            # Multi-stage backend Docker build (Temurin 17 JRE)
-├── docker-compose.yml                    # Multi-service orchestration (MySQL, Backend, Frontend)
-├── .dockerignore                         # Docker build context exclusions
-├── .env.example                          # Root environment template (secrets excluded)
-├── .gitignore                            # Git repository ignore rules
-├── README.md                             # Project documentation & architecture guide
-├── src/                                  # Spring Boot Backend Source
-│   ├── main/
-│   │   ├── java/com/employee/management/
-│   │   │   ├── config/                   # SecurityConfig & OpenApiConfig
-│   │   │   ├── controller/               # Auth, Employee, Department, Health Controllers
-│   │   │   ├── dto/                      # Immutable Record DTOs (Requests & Responses)
-│   │   │   ├── entity/                   # JPA Entities (User, Employee, Department)
-│   │   │   ├── exception/                # GlobalExceptionHandler & Custom Exceptions
-│   │   │   ├── repository/               # Spring Data JPA Repositories
-│   │   │   ├── security/                 # JwtService, Filter, UserDetailsService
-│   │   │   └── service/                  # Business Logic Services
-│   │   └── resources/
-│   │       ├── db/migration/
-│   │       │   └── V1__initial_schema.sql # Flyway baseline schema migration
-│   │       └── application.properties    # Environment-driven Spring configuration
-│   └── test/                             # 48 Unit and Integration Tests
-│       ├── java/com/employee/management/ # Controller, Service, and Repository test suites
-│       └── resources/
-│           └── application.properties    # Isolated test profile configuration
-└── frontend/                             # React Single Page Application Source
-    ├── package.json                      # Frontend dependencies and build scripts
-    ├── vite.config.js                    # Vite configuration
-    ├── Dockerfile                        # Multi-stage frontend Docker build (Node 20 -> Nginx)
-    ├── nginx.conf                        # Nginx SPA fallback routing configuration
-    ├── .dockerignore                     # Frontend Docker context exclusions
-    ├── .env.example                      # Frontend environment template
-    ├── .gitignore                        # Frontend ignore rules
-    └── src/
-        ├── api/                          # Axios client & centralized API service modules
-        ├── components/                   # Reusable UI (ConfirmDialog, EmptyState, etc.)
-        ├── context/                      # AuthContext & Session management
-        ├── hooks/                        # Custom hooks (useAuth)
-        ├── layouts/                      # MainLayout with responsive navigation drawer
-        ├── pages/                        # Dashboard, Employee & Department views
-        ├── routes/                       # AppRoutes, ProtectedRoute, PublicRoute
-        └── utils/                        # Token storage and JWT expiration helpers
-```
-
----
-
----
-
-## Docker & Container Deployment
-
-WorkPulse provides production-oriented multi-stage Dockerfiles and a `docker-compose.yml` specification for running the complete application stack (MySQL, Spring Boot backend, and React frontend) with a single command.
-
-### Prerequisites
-- [Docker Engine](https://docs.docker.com/engine/install/) (v20.10+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
-
-### 1. Configure Environment Variables
-Copy the root `.env.example` template:
-```bash
-cp .env.example .env
-```
-Edit `.env` to supply local database credentials and your 256-bit JWT secret:
-```properties
-DB_NAME=employee_management
-DB_USERNAME=employee_app
-DB_PASSWORD=YourStrongDbPassword123!
-DB_ROOT_PASSWORD=YourStrongRootPassword123!
-JWT_SECRET=c3VwZXJzZWNyZXRqd3RrZXlmb3JlbXBsb3llZW1hbmFnZW1lbnRzeXN0ZW0yMDI2IWtleQ==
-JWT_EXPIRATION=3600000
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-### 2. Build and Start All Containers
-```bash
-docker compose up --build -d
-```
-Docker Compose will:
-1. Start the **MySQL 8.0** container and wait for its healthcheck to report `healthy`.
-2. Build the **Spring Boot backend** via a multi-stage Dockerfile (Maven build $\rightarrow$ lightweight JRE 17 Alpine runtime) and execute Flyway schema migrations on startup.
-3. Build the **React frontend** via a multi-stage Dockerfile (Node.js build $\rightarrow$ Nginx Alpine server with SPA routing fallback).
-
-### 3. Access Dockerized Services
-
-| Service | URL | Description |
-| :--- | :--- | :--- |
-| **Frontend Application** | `http://localhost:3000` | React UI served via Nginx with SPA fallback |
-| **Backend REST API** | `http://localhost:8080` | Spring Boot REST API |
-| **Swagger UI** | `http://localhost:8080/swagger-ui/index.html` | Interactive OpenAPI documentation |
-| **Health Probe** | `http://localhost:8080/api/health` | Backend service health endpoint |
-
-### 4. Stopping and Managing Data
-
-- **Stop containers (preserve database volume)**:
-  ```bash
-  docker compose down
-  ```
-  *Your database records remain safely preserved in the named Docker volume `workpulse_mysql_data`.*
-
-- **Stop containers and purge all database volume data**:
-  ```bash
-  docker compose down -v
-  ```
-  *(Destructive: removes the named volume and erases all database tables).*
-
----
-
-## Security Notes
-- **Password Protection**: BCrypt hashing with salt rounds handled by Spring Security's `PasswordEncoder`. Plaintext passwords are never logged or stored.
-- **JWT Protection**: Tokens are signed using HMAC-SHA256 with environment-configurable secret keys.
-- **CORS Whitelisting**: Configurable origin whitelisting (`CORS_ALLOWED_ORIGINS`) with credentials enabled. Wildcard origins (`*`) are disallowed for authenticated endpoints.
-- **Sanitized Errors**: SQL exceptions, stack traces, and internal database class names are intercepted by `GlobalExceptionHandler` and hidden from client responses.
-- **Container Isolation**: Backend runs under an unprivileged non-root user (`workpulse`), and frontend is served via an optimized Nginx server with SPA security headers.
+- **BCrypt Password Encryption**: Strong salt rounds hashing for user passwords.
+- **Stateless JWT**: Standard Authorization Bearer headers with environment-configured signing secrets.
+- **Sanitized Error Responses**: Zero SQL or internal stack trace leakage in client error responses.
+- **Container Isolation**: Backend runs as an unprivileged non-root user (`workpulse`); frontend runs inside a lightweight Nginx container.
+- **Secret Isolation**: Configuration secrets are decoupled via environment variables; `.env` is ignored by Git and Docker context.
 
 ---
 
 ## Future Improvements
-- **Refresh Token Rotation**: Implement short-lived access tokens accompanied by rotating refresh tokens stored in `HttpOnly`, `Secure`, `SameSite=Strict` cookies.
-- **Role-Based Access Control (RBAC)**: Expand user roles (`ADMIN`, `HR_MANAGER`, `EMPLOYEE`) with fine-grained endpoint method security (`@PreAuthorize`).
-- **Kubernetes / Cloud Orchestration**: Helm charts or Kubernetes manifests for cloud cluster deployment.
-- **Automated CI/CD**: Setup GitHub Actions workflow for automated testing and container image builds.
 
+- **Refresh Token Rotation**: Short-lived access tokens combined with `HttpOnly` refresh cookies.
+- **Role-Based Access Control (RBAC)**: Fine-grained `@PreAuthorize` authorization for `ADMIN` vs `HR_MANAGER` roles.
+- **Automated CI/CD**: GitHub Actions workflow for automated test execution and multi-arch Docker image publishing.
