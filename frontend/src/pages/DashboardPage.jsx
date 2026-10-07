@@ -2,34 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Grid,
-  Paper,
   Box,
   Typography,
   Card,
   CardContent,
-  CardActions,
   Button,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Chip,
+  LinearProgress,
+  IconButton,
+  Tooltip,
   Alert,
 } from '@mui/material';
 import {
-  People as PeopleIcon,
-  Business as BusinessIcon,
-  PersonAdd as PersonAddIcon,
-  ArrowForward as ArrowForwardIcon,
+  PeopleAltRounded as PeopleIcon,
+  ApartmentRounded as BusinessIcon,
+  PersonAddAlt1Rounded as PersonAddIcon,
+  ArrowForwardRounded as ArrowForwardIcon,
+  TrendingUpRounded as TrendingUpIcon,
+  CheckCircleOutlineRounded as CheckIcon,
+  MoreHorizRounded as MoreIcon,
 } from '@mui/icons-material';
+import useAuth from '../hooks/useAuth';
 import employeeApi from '../api/employeeApi';
 import departmentApi from '../api/departmentApi';
-import PageHeader from '../components/PageHeader';
+import StatCard from '../components/StatCard';
+import UserAvatar from '../components/UserAvatar';
+import DepartmentBadge from '../components/DepartmentBadge';
+import MiniCalendar from '../components/MiniCalendar';
 import LoadingState from '../components/LoadingState';
 
+const pastelGradients = [
+  { bg: '#F3E8FF', bar: '#A855F7', text: '#7E22CE' }, // Lavender
+  { bg: '#E6FBF2', bar: '#10B981', text: '#0D9488' }, // Mint
+  { bg: '#FEF9C3', bar: '#F59E0B', text: '#B45309' }, // Amber
+  { bg: '#E0F2FE', bar: '#0284C7', text: '#0369A1' }, // Sky
+  { bg: '#FFE4E6', bar: '#F43F5E', text: '#E11D48' }, // Rose
+];
+
 export const DashboardPage = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [totalEmployees, setTotalEmployees] = useState(0);
+  const [recentEmployees, setRecentEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,13 +51,13 @@ export const DashboardPage = () => {
     setLoading(true);
     setError('');
     try {
-      // Parallel fetch for real stats from backend
       const [empRes, deptRes] = await Promise.all([
-        employeeApi.getAllEmployees({ page: 0, size: 1 }),
+        employeeApi.getAllEmployees({ page: 0, size: 8, sort: 'createdAt,desc' }),
         departmentApi.getAllDepartments(),
       ]);
 
       setTotalEmployees(empRes.totalElements || 0);
+      setRecentEmployees(empRes.content || []);
       setDepartments(deptRes || []);
     } catch (err) {
       setError(
@@ -60,185 +73,225 @@ export const DashboardPage = () => {
   }, []);
 
   if (loading) {
-    return <LoadingState message="Loading dashboard statistics..." />;
+    return <LoadingState message="Loading organization metrics..." />;
   }
 
   return (
     <Box>
-      <PageHeader
-        title="Organization Dashboard"
-        subtitle="Real-time overview of employees and departmental distribution"
-      />
+      {/* Welcome Banner */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h3" fontWeight={800} color="#18202F" letterSpacing={-1}>
+          Welcome, {user?.username || 'Team Lead'}!
+        </Typography>
+        <Typography variant="body1" color="#64748B" fontWeight={500} sx={{ mt: 0.5 }}>
+          Here is your organization directory and headcount distribution for today
+        </Typography>
+      </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} action={<Button color="inherit" size="small" onClick={fetchDashboardData}>Retry</Button>}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: '16px' }} action={<Button color="inherit" size="small" onClick={fetchDashboardData}>Retry</Button>}>
           {error}
         </Alert>
       )}
 
-      {/* Summary KPI Cards */}
+      {/* Top Grid: Calendar + KPI Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={6}>
-          <Paper
-            elevation={2}
-            sx={{
-              p: 3,
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: 2,
-              borderLeft: '6px solid #1976d2',
-            }}
-          >
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: 'primary.light',
-                color: 'primary.contrastText',
-                display: 'flex',
-                mr: 2.5,
-              }}
-            >
-              <PeopleIcon sx={{ fontSize: 36 }} />
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                Total Employees
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="text.primary">
-                {totalEmployees}
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/employees')}
-              endIcon={<ArrowForwardIcon />}
-              sx={{ textTransform: 'none' }}
-            >
-              View
-            </Button>
-          </Paper>
+        {/* Mini Calendar Widget */}
+        <Grid item xs={12} md={4}>
+          <MiniCalendar />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={6}>
-          <Paper
-            elevation={2}
-            sx={{
-              p: 3,
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: 2,
-              borderLeft: '6px solid #9c27b0',
-            }}
-          >
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: 'secondary.light',
-                color: 'secondary.contrastText',
-                display: 'flex',
-                mr: 2.5,
-              }}
-            >
-              <BusinessIcon sx={{ fontSize: 36 }} />
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                Total Departments
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="text.primary">
-                {departments.length}
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              color="secondary"
-              size="small"
-              onClick={() => navigate('/departments')}
-              endIcon={<ArrowForwardIcon />}
-              sx={{ textTransform: 'none' }}
-            >
-              View
-            </Button>
-          </Paper>
+        {/* Stats & Department Progress */}
+        <Grid item xs={12} md={8}>
+          <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+            <Grid item xs={12} sm={6}>
+              <StatCard
+                title="Total Staff Members"
+                value={totalEmployees}
+                subtitle="Active registered employees"
+                icon={PeopleIcon}
+                accentColor="#FF6B4A"
+                onClick={() => navigate('/employees')}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <StatCard
+                title="Active Departments"
+                value={departments.length}
+                subtitle="Organized business units"
+                icon={BusinessIcon}
+                accentColor="#0284C7"
+                onClick={() => navigate('/departments')}
+              />
+            </Grid>
+          </Grid>
+
+          {/* Department Headcount Allocation Card */}
+          <Card sx={{ p: 1 }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6" fontWeight={800} color="#18202F">
+                    Department Headcount Breakdown
+                  </Typography>
+                  <Typography variant="caption" color="#64748B" fontWeight={500}>
+                    Real-time staff allocation by unit
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  onClick={() => navigate('/departments')}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{ color: '#FF6B4A', fontWeight: 700 }}
+                >
+                  Manage
+                </Button>
+              </Box>
+
+              {departments.length === 0 ? (
+                <Typography variant="body2" color="#94A3B8" sx={{ py: 2, textAlign: 'center' }}>
+                  No departments found. Create your first department to see distribution.
+                </Typography>
+              ) : (
+                <Grid container spacing={2}>
+                  {departments.slice(0, 4).map((dept, idx) => {
+                    const percentage = totalEmployees > 0
+                      ? Math.round((dept.employeeCount / totalEmployees) * 100)
+                      : 0;
+                    const palette = pastelGradients[idx % pastelGradients.length];
+
+                    return (
+                      <Grid item xs={12} sm={6} key={dept.id}>
+                        <Box
+                          sx={{
+                            p: 2,
+                            borderRadius: '16px',
+                            bgcolor: palette.bg,
+                            transition: 'transform 0.2s',
+                            '&:hover': { transform: 'translateY(-2px)' },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="body2" fontWeight={700} color={palette.text}>
+                              #{dept.name}
+                            </Typography>
+                            <Typography variant="caption" fontWeight={800} color={palette.text}>
+                              {dept.employeeCount} staff ({percentage}%)
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={percentage}
+                            sx={{
+                              height: 6,
+                              borderRadius: 999,
+                              bgcolor: 'rgba(255,255,255,0.6)',
+                              '& .MuiLinearProgress-bar': {
+                                bgcolor: palette.bar,
+                                borderRadius: 999,
+                              },
+                            }}
+                          />
+                        </Box>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
 
-      {/* Quick Action Navigation & Department Breakdown */}
+      {/* Bottom Grid: Team Directory + Quick Actions */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={7}>
-          <Card variant="outlined" sx={{ borderRadius: 2, height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Department Distribution
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Live staff counts across active organizational departments.
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
+        {/* Team Directory Grid */}
+        <Grid item xs={12} md={8}>
+          <Card sx={{ p: 1, height: '100%' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h6" fontWeight={800} color="#18202F">
+                    Team Directory
+                  </Typography>
+                  <Typography variant="caption" color="#64748B" fontWeight={500}>
+                    Recently joined staff members
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  onClick={() => navigate('/employees')}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{ color: '#FF6B4A', fontWeight: 700 }}
+                >
+                  See all ({totalEmployees})
+                </Button>
+              </Box>
 
-              {departments.length === 0 ? (
-                <Box sx={{ py: 3, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No departments created yet.
+              {recentEmployees.length === 0 ? (
+                <Box sx={{ py: 4, textAlign: 'center' }}>
+                  <Typography variant="body2" color="#94A3B8" sx={{ mb: 2 }}>
+                    No staff records created yet.
                   </Typography>
                   <Button
-                    size="small"
-                    variant="text"
+                    variant="contained"
                     color="primary"
-                    onClick={() => navigate('/departments')}
-                    sx={{ mt: 1, textTransform: 'none' }}
+                    startIcon={<PersonAddIcon />}
+                    onClick={() => navigate('/employees/new')}
                   >
-                    Create a Department
+                    Add First Employee
                   </Button>
                 </Box>
               ) : (
-                <List dense>
-                  {departments.map((dept) => (
-                    <ListItem
-                      key={dept.id}
-                      sx={{
-                        py: 1,
-                        px: 1.5,
-                        borderRadius: 1,
-                        '&:hover': { bgcolor: 'action.hover' },
-                      }}
-                      secondaryAction={
-                        <Chip
-                          label={`${dept.employeeCount} ${
-                            dept.employeeCount === 1 ? 'employee' : 'employees'
-                          }`}
-                          size="small"
-                          color={dept.employeeCount > 0 ? 'primary' : 'default'}
-                          variant={dept.employeeCount > 0 ? 'filled' : 'outlined'}
-                        />
-                      }
-                    >
-                      <ListItemText
-                        primary={
-                          <Typography variant="body1" fontWeight={500}>
-                            {dept.name}
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
+                <Grid container spacing={2}>
+                  {recentEmployees.slice(0, 4).map((emp) => (
+                    <Grid item xs={12} sm={6} key={emp.id}>
+                      <Box
+                        onClick={() => navigate(`/employees/${emp.id}`)}
+                        sx={{
+                          p: 2.5,
+                          borderRadius: '20px',
+                          bgcolor: '#F8FAFC',
+                          border: '1px solid #F1F5F9',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: '#FFFFFF',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                            transform: 'translateY(-2px)',
+                          },
+                        }}
+                      >
+                        <UserAvatar name={`${emp.firstName} ${emp.lastName}`} size={54} sx={{ mb: 1.5 }} />
+                        <Typography variant="subtitle2" fontWeight={800} color="#18202F">
+                          {emp.firstName} {emp.lastName}
+                        </Typography>
+                        <Typography variant="caption" color="#64748B" fontWeight={500} sx={{ mb: 1.5 }}>
+                          {emp.email}
+                        </Typography>
+                        <DepartmentBadge name={emp.departmentName || 'Unassigned'} />
+                      </Box>
+                    </Grid>
                   ))}
-                </List>
+                </Grid>
               )}
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={5}>
-          <Card variant="outlined" sx={{ borderRadius: 2, height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
+        {/* Quick Actions Hub */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ p: 1, height: '100%' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Typography variant="h6" fontWeight={800} color="#18202F" gutterBottom>
                 Quick Actions
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Fast pathways to common administrative operations.
+              <Typography variant="caption" color="#64748B" fontWeight={500} sx={{ display: 'block', mb: 3 }}>
+                Fast administrative shortcuts
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -246,31 +299,48 @@ export const DashboardPage = () => {
                   variant="contained"
                   color="primary"
                   fullWidth
+                  size="large"
                   startIcon={<PersonAddIcon />}
                   onClick={() => navigate('/employees/new')}
-                  sx={{ py: 1.2, textTransform: 'none', justifyContent: 'flex-start', px: 2 }}
+                  sx={{
+                    py: 1.6,
+                    fontSize: '0.95rem',
+                    boxShadow: '0 8px 20px rgba(255, 107, 74, 0.3)',
+                  }}
                 >
                   Add New Employee
                 </Button>
 
                 <Button
-                  variant="outlined"
-                  color="primary"
+                  variant="contained"
+                  color="secondary"
                   fullWidth
+                  size="large"
                   startIcon={<PeopleIcon />}
                   onClick={() => navigate('/employees')}
-                  sx={{ py: 1.2, textTransform: 'none', justifyContent: 'flex-start', px: 2 }}
+                  sx={{
+                    py: 1.6,
+                    fontSize: '0.95rem',
+                    bgcolor: '#18202F',
+                    '&:hover': { bgcolor: '#243046' },
+                  }}
                 >
-                  Browse All Employees
+                  Staff Directory
                 </Button>
 
                 <Button
                   variant="outlined"
-                  color="secondary"
                   fullWidth
+                  size="large"
                   startIcon={<BusinessIcon />}
                   onClick={() => navigate('/departments')}
-                  sx={{ py: 1.2, textTransform: 'none', justifyContent: 'flex-start', px: 2 }}
+                  sx={{
+                    py: 1.6,
+                    fontSize: '0.95rem',
+                    borderColor: '#CBD5E1',
+                    color: '#1E293B',
+                    '&:hover': { borderColor: '#18202F', bgcolor: '#F8FAFC' },
+                  }}
                 >
                   Manage Departments
                 </Button>

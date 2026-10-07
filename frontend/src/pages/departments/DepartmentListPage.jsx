@@ -12,7 +12,6 @@ import {
   TableRow,
   IconButton,
   Tooltip,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -20,24 +19,34 @@ import {
   TextField,
   CircularProgress,
   Alert,
+  Grid,
+  Card,
+  CardContent,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Business as BusinessIcon,
+  AddRounded as AddIcon,
+  EditOutlined as EditIcon,
+  DeleteOutlineRounded as DeleteIcon,
+  ApartmentRounded as BusinessIcon,
+  PeopleAltOutlined as PeopleIcon,
+  TableRowsRounded as TableViewIcon,
+  GridViewRounded as GridViewIcon,
+  CalendarTodayOutlined as CalendarIcon,
 } from '@mui/icons-material';
 import departmentApi from '../../api/departmentApi';
-import PageHeader from '../../components/PageHeader';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmptyState from '../../components/EmptyState';
 import LoadingState from '../../components/LoadingState';
 import NotificationSnackbar from '../../components/NotificationSnackbar';
+import DepartmentBadge from '../../components/DepartmentBadge';
 
 export const DepartmentListPage = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
 
   // Notification state
   const [notification, setNotification] = useState({
@@ -85,7 +94,6 @@ export const DepartmentListPage = () => {
     fetchDepartments();
   }, [fetchDepartments]);
 
-  // Open Create Dialog
   const handleOpenCreate = () => {
     setFormDialog({
       open: true,
@@ -98,7 +106,6 @@ export const DepartmentListPage = () => {
     });
   };
 
-  // Open Edit Dialog
   const handleOpenEdit = (dept) => {
     setFormDialog({
       open: true,
@@ -174,7 +181,6 @@ export const DepartmentListPage = () => {
     }
   };
 
-  // Open Delete Confirmation
   const handleOpenDelete = (dept) => {
     setDeleteDialog({
       open: true,
@@ -205,12 +211,11 @@ export const DepartmentListPage = () => {
     } catch (err) {
       setDeleteDialog((prev) => ({ ...prev, loading: false }));
       if (err.response && err.response.status === 409) {
-        // Business rule: department has employees
         setNotification({
           open: true,
           message:
             err.response?.data?.message ||
-            'This department cannot be deleted because it still has employees.',
+            'This department cannot be deleted because it still has employees assigned.',
           severity: 'error',
         });
       } else {
@@ -223,10 +228,14 @@ export const DepartmentListPage = () => {
     }
   };
 
-  const formatDateTime = (dateStr) => {
+  const formatDate = (dateStr) => {
     if (!dateStr) return '—';
     try {
-      return new Date(dateStr).toLocaleDateString();
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
     } catch {
       return dateStr;
     }
@@ -234,74 +243,153 @@ export const DepartmentListPage = () => {
 
   return (
     <Box>
-      <PageHeader
-        title="Departments"
-        subtitle="Manage organizational business units and staff allocations"
-        action={
+      {/* Header Toolbar */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: 2,
+          mb: 3.5,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" fontWeight={800} color="#18202F" letterSpacing={-0.5}>
+            Department Directory
+          </Typography>
+          <Typography variant="body2" color="#64748B" fontWeight={500}>
+            {departments.length} active business units & allocations
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(e, next) => next && setViewMode(next)}
+            size="small"
+            sx={{
+              bgcolor: '#FFFFFF',
+              borderRadius: '999px',
+              border: '1px solid #E2E8F0',
+              '& .MuiToggleButton-root': {
+                border: 'none',
+                borderRadius: '999px',
+                px: 1.5,
+                color: '#64748B',
+                '&.Mui-selected': {
+                  bgcolor: '#18202F',
+                  color: '#FFFFFF',
+                },
+              },
+            }}
+          >
+            <ToggleButton value="grid" aria-label="grid view">
+              <GridViewIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton value="table" aria-label="table view">
+              <TableViewIcon fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
+
           <Button
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
             onClick={handleOpenCreate}
-            sx={{ textTransform: 'none', px: 2.5 }}
+            sx={{
+              py: 1.2,
+              px: 3,
+              fontSize: '0.9rem',
+              boxShadow: '0 6px 18px rgba(255, 107, 74, 0.3)',
+              flexGrow: { xs: 1, sm: 0 },
+            }}
           >
             Create Department
           </Button>
-        }
-      />
+        </Box>
+      </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} action={<Button color="inherit" size="small" onClick={fetchDepartments}>Retry</Button>}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: '16px' }} action={<Button color="inherit" size="small" onClick={fetchDepartments}>Retry</Button>}>
           {error}
         </Alert>
       )}
 
-      <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        {loading ? (
-          <LoadingState message="Loading departments..." />
-        ) : departments.length === 0 ? (
+      {loading ? (
+        <LoadingState message="Loading departments..." />
+      ) : departments.length === 0 ? (
+        <Paper sx={{ p: 4, borderRadius: '24px', bgcolor: '#FFFFFF' }}>
           <EmptyState
-            icon={BusinessIcon}
             title="No departments found"
-            description="No departments exist yet. Click 'Create Department' to establish your first business unit."
+            description="Your organization currently has no established departments. Click 'Create Department' to create your first unit."
             actionText="Create Department"
             onAction={handleOpenCreate}
           />
-        ) : (
-          <TableContainer>
-            <Table aria-label="departments table">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Department Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Assigned Employees</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, pr: 3 }}>
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {departments.map((dept) => (
-                  <TableRow key={dept.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell sx={{ fontWeight: 600 }}>{dept.name}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={`${dept.employeeCount} ${
-                          dept.employeeCount === 1 ? 'employee' : 'employees'
-                        }`}
-                        size="small"
-                        color={dept.employeeCount > 0 ? 'primary' : 'default'}
-                        variant={dept.employeeCount > 0 ? 'filled' : 'outlined'}
-                      />
-                    </TableCell>
-                    <TableCell>{formatDateTime(dept.createdAt)}</TableCell>
-                    <TableCell align="right" sx={{ pr: 2 }}>
+        </Paper>
+      ) : viewMode === 'grid' ? (
+        /* Grid Card View */
+        <Grid container spacing={2.5}>
+          {departments.map((dept) => (
+            <Grid item xs={12} sm={6} md={4} key={dept.id}>
+              <Card
+                sx={{
+                  p: 1,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 2.5, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '16px',
+                        bgcolor: 'rgba(255, 107, 74, 0.12)',
+                        color: '#FF6B4A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <BusinessIcon />
+                    </Box>
+                    <DepartmentBadge name={dept.name} />
+                  </Box>
+
+                  <Typography variant="h6" fontWeight={800} color="#18202F" sx={{ mb: 1 }}>
+                    {dept.name}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#64748B', mb: 2 }}>
+                    <PeopleIcon sx={{ fontSize: 18 }} />
+                    <Typography variant="body2" fontWeight={600}>
+                      {dept.employeeCount} assigned {dept.employeeCount === 1 ? 'member' : 'members'}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ mt: 'auto', pt: 2, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#94A3B8' }}>
+                      <CalendarIcon sx={{ fontSize: 14 }} />
+                      <Typography variant="caption" fontWeight={600}>
+                        {formatDate(dept.createdAt)}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <Tooltip title="Edit Department">
                         <IconButton
                           size="small"
-                          color="primary"
                           onClick={() => handleOpenEdit(dept)}
-                          aria-label={`Edit ${dept.name}`}
+                          sx={{ color: '#64748B', '&:hover': { color: '#FF6B4A', bgcolor: '#FFF1F2' } }}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -309,9 +397,80 @@ export const DepartmentListPage = () => {
                       <Tooltip title="Delete Department">
                         <IconButton
                           size="small"
-                          color="error"
                           onClick={() => handleOpenDelete(dept)}
-                          aria-label={`Delete ${dept.name}`}
+                          sx={{ color: '#64748B', '&:hover': { color: '#F43F5E', bgcolor: '#FFF1F2' } }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        /* Table View */
+        <Paper sx={{ borderRadius: '24px', overflow: 'hidden', bgcolor: '#FFFFFF', border: '1px solid #F1F5F9' }}>
+          <TableContainer>
+            <Table aria-label="departments table">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Department</TableCell>
+                  <TableCell>Staff Allocation</TableCell>
+                  <TableCell>Established Date</TableCell>
+                  <TableCell align="right" sx={{ pr: 3 }}>
+                    Actions
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {departments.map((dept) => (
+                  <TableRow
+                    key={dept.id}
+                    hover
+                    sx={{
+                      transition: 'background-color 0.15s',
+                      '&:hover': { bgcolor: '#F8FAFC' },
+                    }}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <DepartmentBadge name={dept.name} />
+                        <Typography variant="subtitle2" fontWeight={800} color="#18202F">
+                          {dept.name}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={700} color="#18202F">
+                        {dept.employeeCount} {dept.employeeCount === 1 ? 'member' : 'members'}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography variant="body2" color="#64748B" fontWeight={600}>
+                        {formatDate(dept.createdAt)}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell align="right" sx={{ pr: 2 }}>
+                      <Tooltip title="Edit Department">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenEdit(dept)}
+                          sx={{ color: '#64748B', '&:hover': { color: '#FF6B4A', bgcolor: '#FFF1F2' } }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Department">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenDelete(dept)}
+                          sx={{ color: '#64748B', '&:hover': { color: '#F43F5E', bgcolor: '#FFF1F2' } }}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -322,8 +481,8 @@ export const DepartmentListPage = () => {
               </TableBody>
             </Table>
           </TableContainer>
-        )}
-      </Paper>
+        </Paper>
+      )}
 
       {/* Create / Edit Modal Dialog */}
       <Dialog
@@ -331,14 +490,15 @@ export const DepartmentListPage = () => {
         onClose={handleCloseFormDialog}
         maxWidth="xs"
         fullWidth
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
       >
         <Box component="form" onSubmit={handleFormSubmit} noValidate>
-          <DialogTitle fontWeight={600}>
-            {formDialog.isEdit ? 'Edit Department' : 'Create Department'}
+          <DialogTitle fontWeight={800} color="#18202F">
+            {formDialog.isEdit ? 'Edit Department' : 'Create New Department'}
           </DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ pt: 1 }}>
             {formDialog.serverError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
                 {formDialog.serverError}
               </Alert>
             )}
@@ -347,6 +507,7 @@ export const DepartmentListPage = () => {
               margin="dense"
               id="name"
               label="Department Name"
+              placeholder="e.g. Platform Engineering"
               type="text"
               fullWidth
               required
@@ -359,16 +520,16 @@ export const DepartmentListPage = () => {
                 }))
               }
               error={Boolean(formDialog.nameError)}
-              helperText={formDialog.nameError}
+              helperText={formDialog.nameError || `${formDialog.name.length}/100 characters`}
               disabled={formDialog.submitting}
               sx={{ mt: 1 }}
             />
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
             <Button
               onClick={handleCloseFormDialog}
               disabled={formDialog.submitting}
-              color="inherit"
+              sx={{ color: '#64748B' }}
             >
               Cancel
             </Button>
@@ -377,6 +538,7 @@ export const DepartmentListPage = () => {
               variant="contained"
               color="primary"
               disabled={formDialog.submitting}
+              sx={{ px: 3, boxShadow: '0 4px 14px rgba(255, 107, 74, 0.3)' }}
             >
               {formDialog.submitting ? (
                 <CircularProgress size={20} color="inherit" />
@@ -396,10 +558,10 @@ export const DepartmentListPage = () => {
         title="Delete Department"
         content={
           deleteDialog.employeeCount > 0
-            ? `Warning: Department "${deleteDialog.departmentName}" has ${deleteDialog.employeeCount} assigned employees. Deleting it may be rejected by the server.`
+            ? `Warning: Department "${deleteDialog.departmentName}" has ${deleteDialog.employeeCount} active assigned staff. Deleting it will be rejected by the server.`
             : `Are you sure you want to delete the department "${deleteDialog.departmentName}"? This action cannot be undone.`
         }
-        confirmText="Delete"
+        confirmText="Delete Department"
         confirmColor="error"
         loading={deleteDialog.loading}
         onConfirm={handleConfirmDelete}

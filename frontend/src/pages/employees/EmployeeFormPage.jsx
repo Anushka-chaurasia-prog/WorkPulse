@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Paper,
   Box,
   Typography,
   TextField,
@@ -10,15 +9,22 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
-  Divider,
+  InputAdornment,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
-  Save as SaveIcon,
-  ArrowBack as ArrowBackIcon,
+  SaveRounded as SaveIcon,
+  ArrowBackRounded as ArrowBackIcon,
+  PersonOutlineRounded as PersonIcon,
+  EmailOutlined as EmailIcon,
+  PhoneOutlined as PhoneIcon,
+  AttachMoneyRounded as MoneyIcon,
+  CalendarTodayOutlined as CalendarIcon,
+  ApartmentRounded as DepartmentIcon,
 } from '@mui/icons-material';
 import employeeApi from '../../api/employeeApi';
 import departmentApi from '../../api/departmentApi';
-import PageHeader from '../../components/PageHeader';
 import LoadingState from '../../components/LoadingState';
 
 export const EmployeeFormPage = () => {
@@ -32,7 +38,7 @@ export const EmployeeFormPage = () => {
     email: '',
     phone: '',
     salary: '',
-    joiningDate: new Date().toISOString().split('T')[0], // Default today: YYYY-MM-DD
+    joiningDate: new Date().toISOString().split('T')[0],
     departmentId: '',
   });
 
@@ -42,7 +48,6 @@ export const EmployeeFormPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
 
-  // Fetch departments and optionally employee data on mount
   useEffect(() => {
     const initForm = async () => {
       try {
@@ -172,15 +177,11 @@ export const EmployeeFormPage = () => {
           }
         } else if (status === 404) {
           setServerError(data?.message || 'Employee or Department not found.');
-        } else if (status >= 500) {
-          setServerError('Something went wrong on the server. Please try again.');
         } else {
           setServerError(data?.message || 'Operation failed. Please try again.');
         }
-      } else if (err.request) {
-        setServerError('Cannot connect to backend server. Check your network connection.');
       } else {
-        setServerError('An unexpected error occurred. Please try again.');
+        setServerError('Cannot connect to backend server. Check your network connection.');
       }
     } finally {
       setSubmitting(false);
@@ -188,197 +189,275 @@ export const EmployeeFormPage = () => {
   };
 
   if (loading) {
-    return <LoadingState message={isEditMode ? 'Loading employee data...' : 'Loading form...'} />;
+    return <LoadingState message={isEditMode ? 'Loading employee profile...' : 'Preparing form...'} />;
   }
 
   return (
-    <Box>
-      <PageHeader
-        title={isEditMode ? 'Edit Employee' : 'Add New Employee'}
-        subtitle={
-          isEditMode
-            ? 'Update the employee information and department assignment below'
-            : 'Fill in the information to register a new employee in the system'
-        }
-        action={
-          <Button
-            variant="outlined"
-            color="inherit"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/employees')}
-            sx={{ textTransform: 'none' }}
-          >
-            Back to Employees
-          </Button>
-        }
-      />
+    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3.5 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={800} color="#18202F" letterSpacing={-0.5}>
+            {isEditMode ? 'Edit Staff Profile' : 'Add New Staff Member'}
+          </Typography>
+          <Typography variant="body2" color="#64748B" fontWeight={500}>
+            {isEditMode
+              ? 'Modify employee personal information and organizational assignment'
+              : 'Register a new employee profile in the organizational directory'}
+          </Typography>
+        </Box>
+
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/employees')}
+          sx={{
+            borderColor: '#CBD5E1',
+            color: '#1E293B',
+            '&:hover': { borderColor: '#18202F', bgcolor: '#FFFFFF' },
+          }}
+        >
+          Back
+        </Button>
+      </Box>
 
       {serverError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: '16px' }}>
           {serverError}
         </Alert>
       )}
 
-      <Paper elevation={2} sx={{ p: 4, borderRadius: 2 }}>
-        <Box component="form" onSubmit={handleSubmit} noValidate>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Personal & Contact Information
-          </Typography>
-          <Divider sx={{ mb: 3 }} />
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        {/* Section 1: Personal & Contact */}
+        <Card sx={{ mb: 3, p: 1 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={800} color="#18202F" gutterBottom>
+              Personal & Contact Information
+            </Typography>
+            <Typography variant="caption" color="#64748B" fontWeight={500} sx={{ display: 'block', mb: 3 }}>
+              Basic identification and communication details
+            </Typography>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                id="firstName"
-                name="firstName"
-                label="First Name"
-                value={formData.firstName}
-                onChange={handleChange}
-                error={Boolean(formErrors.firstName)}
-                helperText={formErrors.firstName}
-                disabled={submitting}
-              />
+            <Grid container spacing={2.5}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  id="firstName"
+                  name="firstName"
+                  label="First Name"
+                  placeholder="e.g. Dana"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.firstName)}
+                  helperText={formErrors.firstName}
+                  disabled={submitting}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  id="lastName"
+                  name="lastName"
+                  label="Last Name"
+                  placeholder="e.g. Vance"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.lastName)}
+                  helperText={formErrors.lastName}
+                  disabled={submitting}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  name="email"
+                  label="Email Address"
+                  type="email"
+                  placeholder="e.g. dana.vance@workpulse.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.email)}
+                  helperText={formErrors.email}
+                  disabled={submitting}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  id="phone"
+                  name="phone"
+                  label="Phone Number"
+                  placeholder="+1 (555) 019-2834"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.phone)}
+                  helperText={formErrors.phone}
+                  disabled={submitting}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PhoneIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
             </Grid>
+          </CardContent>
+        </Card>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                id="lastName"
-                name="lastName"
-                label="Last Name"
-                value={formData.lastName}
-                onChange={handleChange}
-                error={Boolean(formErrors.lastName)}
-                helperText={formErrors.lastName}
-                disabled={submitting}
-              />
-            </Grid>
+        {/* Section 2: Compensation & Assignment */}
+        <Card sx={{ mb: 4, p: 1 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={800} color="#18202F" gutterBottom>
+              Employment & Assignment
+            </Typography>
+            <Typography variant="caption" color="#64748B" fontWeight={500} sx={{ display: 'block', mb: 3 }}>
+              Compensation rate, start tenure, and department allocation
+            </Typography>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                id="email"
-                name="email"
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                error={Boolean(formErrors.email)}
-                helperText={formErrors.email}
-                disabled={submitting}
-              />
-            </Grid>
+            <Grid container spacing={2.5}>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  id="salary"
+                  name="salary"
+                  label="Annual Salary ($)"
+                  type="number"
+                  placeholder="95000"
+                  inputProps={{ min: 0, step: '100' }}
+                  value={formData.salary}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.salary)}
+                  helperText={formErrors.salary || 'Annual USD compensation'}
+                  disabled={submitting}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <MoneyIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                id="phone"
-                name="phone"
-                label="Phone Number (Optional)"
-                value={formData.phone}
-                onChange={handleChange}
-                error={Boolean(formErrors.phone)}
-                helperText={formErrors.phone}
-                disabled={submitting}
-              />
-            </Grid>
-          </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  required
+                  fullWidth
+                  id="joiningDate"
+                  name="joiningDate"
+                  label="Joining Date"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  value={formData.joiningDate}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.joiningDate)}
+                  helperText={formErrors.joiningDate}
+                  disabled={submitting}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
 
-          <Typography variant="h6" fontWeight={600} sx={{ mt: 4 }} gutterBottom>
-            Employment & Compensation
-          </Typography>
-          <Divider sx={{ mb: 3 }} />
-
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                id="salary"
-                name="salary"
-                label="Annual Salary ($)"
-                type="number"
-                inputProps={{ min: 0, step: '100' }}
-                value={formData.salary}
-                onChange={handleChange}
-                error={Boolean(formErrors.salary)}
-                helperText={formErrors.salary || 'e.g. 75000'}
-                disabled={submitting}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-              <TextField
-                required
-                fullWidth
-                id="joiningDate"
-                name="joiningDate"
-                label="Joining Date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.joiningDate}
-                onChange={handleChange}
-                error={Boolean(formErrors.joiningDate)}
-                helperText={formErrors.joiningDate}
-                disabled={submitting}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-              <TextField
-                required
-                fullWidth
-                select
-                id="departmentId"
-                name="departmentId"
-                label="Department"
-                value={formData.departmentId}
-                onChange={handleChange}
-                error={Boolean(formErrors.departmentId)}
-                helperText={formErrors.departmentId}
-                disabled={submitting || departments.length === 0}
-              >
-                {departments.length === 0 ? (
-                  <MenuItem value="" disabled>
-                    No departments available
-                  </MenuItem>
-                ) : (
-                  departments.map((dept) => (
-                    <MenuItem key={dept.id} value={dept.id}>
-                      {dept.name}
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  required
+                  fullWidth
+                  select
+                  id="departmentId"
+                  name="departmentId"
+                  label="Department"
+                  value={formData.departmentId}
+                  onChange={handleChange}
+                  error={Boolean(formErrors.departmentId)}
+                  helperText={formErrors.departmentId}
+                  disabled={submitting || departments.length === 0}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <DepartmentIcon sx={{ color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                >
+                  {departments.length === 0 ? (
+                    <MenuItem value="" disabled>
+                      No departments available
                     </MenuItem>
-                  ))
-                )}
-              </TextField>
+                  ) : (
+                    departments.map((dept) => (
+                      <MenuItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </MenuItem>
+                    ))
+                  )}
+                </TextField>
+              </Grid>
             </Grid>
-          </Grid>
+          </CardContent>
+        </Card>
 
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button
-              variant="outlined"
-              color="inherit"
-              onClick={() => navigate('/employees')}
-              disabled={submitting}
-              sx={{ textTransform: 'none', px: 3 }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={submitting}
-              startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-              sx={{ textTransform: 'none', px: 3 }}
-            >
-              {submitting ? 'Saving...' : isEditMode ? 'Update Employee' : 'Create Employee'}
-            </Button>
-          </Box>
+        {/* Action Controls */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/employees')}
+            disabled={submitting}
+            sx={{ px: 3, py: 1.2, borderColor: '#CBD5E1', color: '#1E293B' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={submitting}
+            startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+            sx={{
+              px: 4,
+              py: 1.2,
+              fontSize: '0.95rem',
+              boxShadow: '0 6px 20px rgba(255, 107, 74, 0.3)',
+            }}
+          >
+            {submitting ? 'Saving...' : isEditMode ? 'Update Profile' : 'Save Employee'}
+          </Button>
         </Box>
-      </Paper>
+      </Box>
     </Box>
   );
 };
