@@ -1,0 +1,50 @@
+name: WorkPulse CI
+
+on:
+  push: 
+     branches: [main]
+  pull_request:
+     branches: [main]   
+
+jobs:
+  backend:
+      runs-on: ubuntu-latest
+      services:
+       mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: employee_management
+          MYSQL_USER: employee_app
+          MYSQL_PASSWORD: EmployeeApp@123
+          MYSQL_ROOT_PASSWORD: RootPass@123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5  
+          
+      steps:
+        - name: Checkout-code
+          uses: actions/checkout@v4
+
+        - name: Set up Java
+          uses: actions/setup-java@v4
+          with:
+            java-version: '17'
+            distribution: 'temurin'  
+
+        - name: Run backend tests
+          env:
+            DB_URL: jdbc:mysql://127.0.0.1:3306/employee_management?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+            DB_USERNAME: employee_app
+            DB_PASSWORD: EmployeeApp@123
+          run: mvn clean test  
+
+
+
+
+
+
+            
