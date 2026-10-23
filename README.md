@@ -131,13 +131,13 @@ Interactive Swagger / OpenAPI UI is accessible at:
 
 ## Screenshots
 
-| Dashboard View | Employee Directory |
+| Dashboard Overview | Employee Directory |
 | :---: | :---: |
-| *(Dashboard KPI metrics & department distribution)* | *(Searchable, paginated employee table with actions)* |
+| ![Dashboard Overview](docs/screenshots/dashboard.png) | ![Employee Directory](docs/screenshots/employee-directory.png) |
 
-| Department Management | Add / Edit Employee Form |
+| Department Management | Add / Edit Staff Member |
 | :---: | :---: |
-| *(Department cards with active employee counts)* | *(Validated employee form with department dropdown)* |
+| ![Department Management](docs/screenshots/department-directory.png) | ![Add / Edit Staff Member](docs/screenshots/employee-form.png) |
 
 ---
 
